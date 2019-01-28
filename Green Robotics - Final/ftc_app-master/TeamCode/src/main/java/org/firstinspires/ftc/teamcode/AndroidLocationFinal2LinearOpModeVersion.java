@@ -120,7 +120,11 @@ import static java.lang.Thread.sleep;
 
         targetAzimuth = currentTheta;
 
-        waitForStart();
+//        waitForStart();
+        while (!opModeIsActive() && !isStopRequested()) {
+            telemetry.addData("status", "waiting for start command...");
+            telemetry.update();
+        }
 
 //        currentLocation = MyService.getLocation();
 //        previousLocation = currentLocation;
