@@ -120,8 +120,8 @@ import java.util.Date;
         mSensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_UI);
         mSensorManager.registerListener(this, magnetometer, SensorManager.SENSOR_DELAY_UI);
 
-           turnByAzimuth(targetAzimuth);
-           moveRobot(0.25);
+//           turnByAzimuth(targetAzimuth);
+//           moveRobot(0.25);
 
 
 

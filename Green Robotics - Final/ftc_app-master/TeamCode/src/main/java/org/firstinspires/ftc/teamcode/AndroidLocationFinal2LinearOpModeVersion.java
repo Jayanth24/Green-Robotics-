@@ -23,7 +23,16 @@ import static java.lang.Thread.sleep;
 
 @Autonomous public class AndroidLocationFinal2LinearOpModeVersion extends LinearOpMode implements SensorEventListener {
 
-    private static Location initialLocation;
+    public static Location initialLocation = new Location("");
+
+
+    public double telemetryDistance;
+    public double telemetryVelocity;
+    public double telemetryaCrossD;
+    public double telemetryCosTheta;
+    public double telemetryActualDisplacementLatitude;
+    public double telemetryActualDisplacementLongitude;
+    public double changeInLocation;
     private static long timeSinceLastLocationUpdateInMillis;
     private static final long START_TIME_IN_MILLISECONDS = 600000;
     private CountDownTimer mCountDownTimer;
@@ -36,8 +45,10 @@ import static java.lang.Thread.sleep;
     private Sensor magnetometer;
     DcMotor motorRight;
     DcMotor motorLeft;
-    private static Location currentLocation = new Location("");
+//    private static Location currentLocation = new Location("");
     private static Location targetLocation = new Location("");
+    private static Location previousLocation = new Location("");
+
     private static double[] targetDisplacementVector = new double[2];
     private static double[] actualDisplacementVector = new double[2];
     public static int iterations = 0;
@@ -73,16 +84,31 @@ import static java.lang.Thread.sleep;
         pitch = 0.0f;        // value in radians
         roll = 0.0f;
 
-        targetLocation.setLatitude(40.13343);
-        targetLocation.setLongitude(-78);
+//        targetLocation.setLatitude(40.13343);
+//        targetLocation.setLongitude(-78);
 
-        currentLocation.setLatitude(MyService.getLocation().getLatitude());
-        currentLocation.setLongitude(MyService.getLocation().getLongitude());
+        targetLocation.setLatitude(40.1314006);
+        targetLocation.setLongitude(-83.183521);
 
-        initialLocation = currentLocation;
+        //lake erie
+//        targetLocation.setLatitude(40.114243);
+//        targetLocation.setLongitude(-83.153138);
 
-        targetDisplacementVector[0] = (targetLocation.getLatitude()) - (currentLocation.getLatitude());
-        targetDisplacementVector[1] = (targetLocation.getLongitude()) - (currentLocation.getLatitude());
+//        currentLocation.setLatitude(MyService.getLocation().getLatitude());
+//        currentLocation.setLongitude(MyService.getLocation().getLongitude());
+
+//        initialLocation = currentLocation;
+//        previousLocation = currentLocation;
+
+        initialLocation.setLatitude(MyService.getLocation().getLatitude());
+        initialLocation.setLongitude(MyService.getLocation().getLongitude());
+
+        previousLocation.setLatitude(initialLocation.getLatitude());
+        previousLocation.setLongitude(initialLocation.getLongitude());
+//        previousLocation = initialLocation;
+
+        targetDisplacementVector[0] = (targetLocation.getLatitude()) - (initialLocation.getLatitude());
+        targetDisplacementVector[1] = (targetLocation.getLongitude()) - (initialLocation.getLatitude());
 
         double hypotenuse = Math.sqrt(targetDisplacementVector[0]*targetDisplacementVector[0] + targetDisplacementVector[1]*targetDisplacementVector[1]);
         double currentTheta = Math.asin(targetDisplacementVector[0]/hypotenuse);
@@ -96,7 +122,9 @@ import static java.lang.Thread.sleep;
 
         waitForStart();
 
-        currentLocation = MyService.getLocation();
+//        currentLocation = MyService.getLocation();
+//        previousLocation = currentLocation;
+
         startTimer();
         mSensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_UI);
         mSensorManager.registerListener(this, magnetometer, SensorManager.SENSOR_DELAY_UI);
@@ -104,16 +132,39 @@ import static java.lang.Thread.sleep;
            turnByAzimuth(targetAzimuth);
            moveRobot(0.25);
 
+           double tolerance = 1.0e-9;
+           while(opModeIsActive()) {
+               idle();
 
+//               telemetry.addData("Initial Previous Location Latitude", previousLocation.getLatitude());
+//               telemetry.addData("Initial Previous Location Longitude", previousLocation.getLongitude());
+//               telemetry.addData("Enter While Loop", 0);
+//
+//               telemetry.update();
 
-        while(opModeIsActive()) {
+            sleep(10000);
 
             if(MyService.getLocation() != null) {
-//                telemetry.addData("Integer Test", MyService.lastInt);
-                if((currentLocation.getLatitude() != MyService.getLocation().getLatitude()) || currentLocation.getLongitude() != MyService.getLocation().getLongitude() ) {
+//                telemetry.addData("If statement 1 executed", 1);
+                telemetry.addData("Initial Location Latitude", initialLocation.getLatitude());
+                telemetry.addData("Initial Location Longitude", initialLocation.getLongitude());
 
-                    test = 1;
-                    telemetry.addData("Success", 1);
+                 telemetry.addData("Previous Location Latitude", previousLocation.getLatitude());
+                 telemetry.addData("Previous Location Longitude", previousLocation.getLongitude());
+
+                 telemetry.addData("Current Location Latitude", MyService.getLocation().getLatitude());
+                 telemetry.addData("Currrent Location Longitude", MyService.getLocation().getLongitude());
+
+                telemetry.update();
+
+//                telemetry.addData("Integer Test", MyService.lastInt);
+//                if( (targetLocation.getLatitude() != MyService.getLocation().getLatitude() )||( targetLocation.getLongitude() != MyService.getLocation().getLongitude())) {
+//                if( (Math.abs(targetLocation.getLatitude() - MyService.getLocation().getLatitude())> tolerance )||( Math.abs(targetLocation.getLongitude() - MyService.getLocation().getLongitude()) > tolerance)) {
+                    if( (Math.abs(previousLocation.getLatitude() - MyService.getLocation().getLatitude())> tolerance )||( Math.abs(previousLocation.getLongitude() - MyService.getLocation().getLongitude()) > tolerance)) {
+                        telemetry.addData("Yeah - Should be executed", 1);
+//                    telemetry.addData("While Loop is Executing", 1);
+//                    test = 1;
+//                    telemetry.addData("Success", 1);
 
                     firstLocationChanged = true;
                     numberOfChanges++;
@@ -121,55 +172,154 @@ import static java.lang.Thread.sleep;
                     actualDisplacementVector[0] = MyService.getLocation().getLatitude() - initialLocation.getLatitude();
                     actualDisplacementVector[1] = MyService.getLocation().getLongitude() - initialLocation.getLongitude();
 
+                    telemetryActualDisplacementLatitude = actualDisplacementVector[0];
+                    telemetryActualDisplacementLongitude = actualDisplacementVector[1];
+
                     double dDOTa = (targetDisplacementVector[0]*actualDisplacementVector[0] + targetDisplacementVector[1]*actualDisplacementVector[1]);
                     double aCROSSd = -(targetDisplacementVector[0]*actualDisplacementVector[1] - targetDisplacementVector[1]*actualDisplacementVector[0]);
+                    telemetryaCrossD = aCROSSd;
                     double MagnitudeProduct = (Math.sqrt(targetDisplacementVector[0]*targetDisplacementVector[0] + targetDisplacementVector[1]*targetDisplacementVector[1]) )*(Math.sqrt(actualDisplacementVector[0]*actualDisplacementVector[0] + actualDisplacementVector[1]*actualDisplacementVector[1])) ;
-                    double cosTheta = dDOTa/MagnitudeProduct;
+
+
+                    double cosTheta;
+                    if (Math.abs(MagnitudeProduct)<tolerance){
+                        cosTheta = Math.cos(currentTheta);
+                    } else{
+                         cosTheta = dDOTa/MagnitudeProduct;
+                    }
+
+
+//                    double cosTheta = dDOTa/MagnitudeProduct;
+                    telemetryCosTheta = cosTheta;
                     double sinTheta = Math.sqrt(1 - (cosTheta)*(cosTheta));
                     double distanceToPath = sinTheta*Math.sqrt(actualDisplacementVector[0]*actualDisplacementVector[0]+actualDisplacementVector[1]*actualDisplacementVector[1]);
 
-                    distanceToPath = distanceToPath*aCROSSd/Math.abs(aCROSSd);
 
+                    if (Math.abs(aCROSSd)>=tolerance){
+                        distanceToPath = distanceToPath*aCROSSd/Math.abs(aCROSSd);
+                    }
+
+//                    distanceToPath = distanceToPath*aCROSSd/Math.abs(aCROSSd);
+
+                    telemetryDistance = distanceToPath;
 
                     double[] velocityVector = new double[2];
 
                     startTimer();
 
-                    velocityVector[0] = (MyService.getLocation().getLatitude() - currentLocation.getLatitude())/(timeSinceLastLocationUpdateInMillis);
-                    velocityVector[1] = (MyService.getLocation().getLongitude() - currentLocation.getLongitude())/(timeSinceLastLocationUpdateInMillis);
+//                    velocityVector[0] = (MyService.getLocation().getLatitude() - currentLocation.getLatitude())/(timeSinceLastLocationUpdateInMillis);
+//                    velocityVector[1] = (MyService.getLocation().getLongitude() - currentLocation.getLongitude())/(timeSinceLastLocationUpdateInMillis);
+
+                    velocityVector[0] = (MyService.getLocation().getLatitude() - previousLocation.getLatitude())/(timeSinceLastLocationUpdateInMillis);
+                    velocityVector[1] = (MyService.getLocation().getLongitude() - previousLocation.getLongitude())/(timeSinceLastLocationUpdateInMillis);
+
 
                     double dDOTv = (targetDisplacementVector[0]*velocityVector[0] + targetDisplacementVector[1]*velocityVector[1]);
                     double vCROSSd = -(targetDisplacementVector[0]*velocityVector[1] - targetDisplacementVector[1]*velocityVector[0]);
                     MagnitudeProduct = (Math.sqrt(targetDisplacementVector[0]*targetDisplacementVector[0] + targetDisplacementVector[1]*targetDisplacementVector[1]) )*(Math.sqrt(velocityVector[0]*velocityVector[0] + velocityVector[1]*velocityVector[1])) ;
-                    cosTheta = dDOTv/MagnitudeProduct;
+
+                    if (Math.abs(MagnitudeProduct)<tolerance){
+                        cosTheta = currentTheta;
+                    } else{
+                        cosTheta = dDOTv/MagnitudeProduct;
+
+
+                    }
+//                    cosTheta = dDOTv/MagnitudeProduct;
                     sinTheta = Math.sqrt(1 - (cosTheta)*(cosTheta));
                     double orthogonalVelocity = sinTheta*Math.sqrt(velocityVector[0]*velocityVector[0]+velocityVector[1]*velocityVector[1]);
 
-                    orthogonalVelocity = orthogonalVelocity*vCROSSd/Math.abs(vCROSSd);
+                    if (Math.abs(vCROSSd)>=tolerance){
+                        orthogonalVelocity = orthogonalVelocity*vCROSSd/Math.abs(vCROSSd);
+
+                    } else{
+                        orthogonalVelocity = 0;
+
+                    }
+//                    orthogonalVelocity = orthogonalVelocity*vCROSSd/Math.abs(vCROSSd);
+
+                    telemetryVelocity = orthogonalVelocity;
 
                     turnByPD(distanceToPath, orthogonalVelocity);
 
-                    currentLocation = MyService.getLocation();
+//                    initialLocation = currentLocation;
+
+//                    previousLocation = MyService.getLocation();
+                    previousLocation.setLatitude(MyService.getLocation().getLatitude());
+                    previousLocation.setLongitude(MyService.getLocation().getLongitude());
+//                    currentLocation = MyService.getLocation();
+
+                    //targetDisplacementVector[0] = (targetLocation.getLatitude()) - (currentLocation.getLatitude());
+                    //targetDisplacementVector[1] = (targetLocation.getLongitude()) - (currentLocation.getLatitude());
+
+                    actualDisplacementVector[0] = MyService.getLocation().getLatitude() - initialLocation.getLatitude();
+                    actualDisplacementVector[1] = MyService.getLocation().getLongitude() - initialLocation.getLongitude();
+
+
+                    telemetryActualDisplacementLatitude = actualDisplacementVector[0];
+                    telemetryActualDisplacementLongitude = actualDisplacementVector[1];
+
+                        telemetry.addData("aCrossD", telemetryaCrossD);
+
+                        telemetry.addData("cosTheta", telemetryCosTheta);
+
+                        telemetry.addData("Actual Displacement Vector Latitude", telemetryActualDisplacementLatitude);
+                        telemetry.addData("Actual Displacement Vector Longitude", telemetryActualDisplacementLongitude);
+
+//                telemetry.addData("Latitude before PD Executed",  currentLocation.getLatitude());
+//                telemetry.addData("Longitude before PD Executed", currentLocation.getLongitude());
+
+                        telemetry.addData("Target Latitude", targetLocation.getLatitude());
+                        telemetry.addData("Target Longitude", targetLocation.getLongitude());
+
+                        telemetry.addData("First Location Changed", firstLocationChanged);
+                        telemetry.addData("Number of times changed", numberOfChanges);
+
+                        telemetry.addData("Distance to Path", telemetryDistance);
+                        telemetry.addData("Orthogonal Velocity", telemetryVelocity);
+
+                        telemetry.addData("Current Azimuth",(azimuth));
+                        telemetry.addData("Current Pitch", (pitch));
+                        telemetry.addData("Current Roll", (roll));
+
+                        telemetry.update();
 
                 }
 
-                telemetry.addData("Current Latitude", MyService.getLocation().getLatitude());
-                telemetry.addData("Current Longitude", MyService.getLocation().getLongitude());
+//                telemetry.addData("Current Latitude", MyService.getLocation().getLatitude());
+//                telemetry.addData("Current Longitude", MyService.getLocation().getLongitude());
 
-                telemetry.addData("Latitude before PD Executed",  currentLocation.getLatitude());
-                telemetry.addData("Longitude before PD Executed", currentLocation.getLongitude());
+//                telemetry.addData("Updated Previous Location Latitude", previousLocation.getLatitude());
+//                telemetry.addData("Updated Previous Location Longitude", previousLocation.getLongitude());
 
-                telemetry.addData("First Location Changed", firstLocationChanged);
-                telemetry.addData("Number of times changed", numberOfChanges);
+//                telemetry.addData("aCrossD", telemetryaCrossD);
+//
+//                telemetry.addData("cosTheta", telemetryCosTheta);
+//
+//                telemetry.addData("Actual Displacement Vector Latitude", telemetryActualDisplacementLatitude);
+//                telemetry.addData("Actual Displacement Vector Longitude", telemetryActualDisplacementLongitude);
+//
+////                telemetry.addData("Latitude before PD Executed",  currentLocation.getLatitude());
+////                telemetry.addData("Longitude before PD Executed", currentLocation.getLongitude());
+//
+//                telemetry.addData("Target Latitude", targetLocation.getLatitude());
+//                telemetry.addData("Target Longitude", targetLocation.getLongitude());
+//
+//                telemetry.addData("First Location Changed", firstLocationChanged);
+//                telemetry.addData("Number of times changed", numberOfChanges);
+//
+//                telemetry.addData("Distance to Path", telemetryDistance);
+//                telemetry.addData("Orthogonal Velocity", telemetryVelocity);
+
 
             }
 
-            telemetry.addData("Current Azimuth",(azimuth));
-            telemetry.addData("Current Pitch", (pitch));
-            telemetry.addData("Current Roll", (roll));
+//            telemetry.addData("Current Azimuth",(azimuth));
+//            telemetry.addData("Current Pitch", (pitch));
+//            telemetry.addData("Current Roll", (roll));
 
-            telemetry.addData("Left motor power", motorLeft.getPower());
-            telemetry.addData("Right motor power", motorRight.getPower());
+//            telemetry.addData("Left motor power", motorLeft.getPower());
+//            telemetry.addData("Right motor power", motorRight.getPower());
 
             telemetry.update();
         }
@@ -393,7 +543,7 @@ import static java.lang.Thread.sleep;
     }
 
     public void moveRobot( double power) {
-        motorLeft.setPower(power);
+        motorLeft.setPower(-1*power);
         motorRight.setPower(power);
     }
 
@@ -432,11 +582,24 @@ import static java.lang.Thread.sleep;
 
     private void turnByPD(double distance, double velocity) {
 
-        double P = 100;
-        double D = 100;
-//        double total = P*distance + D*velocity;
+        motorLeft.setPower(0);
+        motorRight.setPower(0);
+        sleep(5000);
 
-        double total = Math.PI/4;
+        double P = 1.0e6;
+        double D = 1.0e6;
+      double total = P*distance + D*velocity;
+
+      if(Math.abs(total) > Math.PI/4) {
+          if(total > 0) {
+              total = Math.PI/4;
+          }
+          else {
+              total = -Math.PI/4;
+          }
+      }
+
+//        double total = Math.PI/4;
 //        Can put coefficients in front of it - Assume PD added coefficients make total an angle change from -45 to 45
 
           if(total > 0) {
@@ -454,6 +617,8 @@ import static java.lang.Thread.sleep;
               }
               turnByAzimuth(desiredAzimuth);
           }
+
+          moveRobot(0.25);
 
     }
 
